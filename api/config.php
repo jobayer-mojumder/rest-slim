@@ -13,11 +13,11 @@ session_start();
 
 
 /* DATABASE CONFIGURATION */
-define('DB_SERVER', 'localhost');
-define('DB_USERNAME', 'root');
-define('DB_PASSWORD', 'root');
-define('DB_DATABASE', 'gsd');
-define("BASE_URL", "http://localhost/restapi/api/");
+define('DB_SERVER', '3.134.103.215');
+define('DB_USERNAME', 'remote');
+define('DB_PASSWORD', 'Remote2019@');
+define('DB_DATABASE', 'GDSD_schema');
+define("BASE_URL", "http://hsfmarketplace-env.ipknu5ipfw.us-east-1.elasticbeanstalk.com/demo/api/");
 define("SITE_KEY", 'jobayerMojumder');
 
 

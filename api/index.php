@@ -45,6 +45,38 @@ $app->get('/search(/:text)', function($text){
     }
 });
 
+
+$app->get('/my-products(/:user)', function($user){
+    try
+    {
+        $db = getDB();
+        $productsData = '';
+
+        $sql = "SELECT * FROM table_product WHERE seller=:user";
+        $stmt = $db->prepare($sql);
+        //$stmt->bindParam("search", "%".$data->text."%", PDO::PARAM_STR);
+        //$stmt->execute();
+        $stmt->execute(array(':user' => $user));
+        $mainCount = $stmt->rowCount();
+        $productsData = $stmt->fetchAll(PDO::FETCH_OBJ);
+
+        $db = null;
+        if ($productsData)
+        {
+            $productData = json_encode($productsData);
+            echo '{"products": ' . $productData . '}';
+        }
+        else
+        {
+            echo '{"error":{"text":"Bad request"}}';
+        }
+    }
+    catch(PDOException $e)
+    {
+        echo '{"error":{"text":' . $e->getMessage() . '}}';
+    }
+});
+
 $app->get('/product-details(/:id)', function ($id = 0) {
     if ($id==0 || $id=='') {
         echo '{"error":{"text":"Request needs a id."}}';
