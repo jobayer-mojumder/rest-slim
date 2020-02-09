@@ -4,6 +4,7 @@ require 'Slim/Slim.php';
 
 \Slim\Slim::registerAutoloader();
 $app = new \Slim\Slim();
+// $app->add('CorsMiddleware');
 
 $app->post('/login', 'login');
 $app->post('/signup', 'signup');
