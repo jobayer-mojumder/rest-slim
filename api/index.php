@@ -10,6 +10,10 @@ $app->post('/login', 'login');
 $app->post('/signup', 'signup');
 $app->post('/productAdd', 'productAdd');
 
+$app->post('/product_price', 'product_by_price');
+$app->post('/product_category', 'product_by_category');
+$app->post('/seller_info', 'seller_info');
+
 $app->get('/products', 'products');
 $app->get('/newProducts', 'newProducts');
 $app->get('/topProducts', 'topProducts');
@@ -37,7 +41,7 @@ $app->get('/search(/:text)', function($text){
         }
         else
         {
-            echo '{"error":{"text":"Bad request"}}';
+            echo '{"error":{"text":"No product found!"}}';
         }
     }
     catch(PDOException $e)
@@ -69,7 +73,7 @@ $app->get('/my-products(/:user)', function($user){
         }
         else
         {
-            echo '{"error":{"text":"Bad request"}}';
+            echo '{"error":{"text":"No product found!"}}';
         }
     }
     catch(PDOException $e)
@@ -117,6 +121,74 @@ $app->get('/product-details(/:id)', function ($id = 0) {
 
 $app->run();
 
+
+function product_by_price(){
+    $request = \Slim\Slim::getInstance()->request();
+    $data = json_decode($request->getBody());
+    try{
+        $max = $data->max;
+        $min = $data->min;
+        $average = $data->average;
+
+        $db = getDB();
+        $productsData = '';
+
+        $sql = "SELECT * FROM table_product WHERE cost>=:min and cost<=:max limit 10";
+        $stmt = $db->prepare($sql);
+        $stmt->execute(array(':min' => $min, ':max' => $max));
+        $mainCount = $stmt->rowCount();
+        $productsData = $stmt->fetchAll(PDO::FETCH_OBJ);
+
+        $db = null;
+        if ($productsData)
+        {
+            $productData = json_encode($productsData);
+            echo '{"products": ' . $productData . '}';
+        }
+        else
+        {
+            echo '{"error":{"text":"Warning! No product found"}}';
+        }
+
+    }catch(PDOException $e){
+
+    }
+}
+
+function product_by_category(){
+    $request = \Slim\Slim::getInstance()->request();
+    $data = json_decode($request->getBody());
+    try{
+        $max = $data->max;
+        $min = $data->min;
+        $category = $data->category;
+
+        $db = getDB();
+        $productsData = '';
+
+        $sql = "SELECT * FROM table_product WHERE cost>=:min and cost<=:max and category=:category limit 10";
+        $stmt = $db->prepare($sql);
+        $stmt->execute(array(':min' => $min, ':max' => $max, 'category'=>$category));
+        $mainCount = $stmt->rowCount();
+        $productsData = $stmt->fetchAll(PDO::FETCH_OBJ);
+
+        $db = null;
+        if ($productsData)
+        {
+            $productData = json_encode($productsData);
+            echo '{"products": ' . $productData . '}';
+        }
+        else
+        {
+            echo '{"error":{"text":"Warning! No product found"}}';
+        }
+
+    }catch(PDOException $e){
+
+    }
+}
+
+
 /************************* USER LOGIN *************************************/
 function login()
 {
@@ -151,7 +223,7 @@ function login()
         }
         else
         {
-            echo '{"text":"Warning! wrong email and password"}';
+            echo '{"text":"Warning! wrong email or password"}';
         }
 
     }
@@ -177,6 +249,7 @@ function signup()
     $state = $data->state;
     $zip = $data->zip;
     $country = $data->country;
+    $verification_code = "123212";
     if ($data->whoami == 1) {
         $is_buyer = 'Y';
         $is_seller = 'N';
@@ -186,8 +259,6 @@ function signup()
     }
 
     try{
-
-
 
         if ( strlen($email)>0){
             $db = getDB();
@@ -202,7 +273,7 @@ function signup()
             if ($mainCount == 0){
 
                 /*Inserting user values*/
-                $sql1 = "INSERT INTO user(firstname,lastname,email,password,phone,city,state,zip,country,is_buyer,is_seller, initial_email)VALUES(:firstname,:lastname,:email,:password,:phone,:city,:state,:zip,:country,:is_buyer,:is_seller, :initial_email)";
+                $sql1 = "INSERT INTO user(firstname,lastname,email,password,phone,city,state,zip,country,is_buyer,is_seller, initial_email, verification_code)VALUES(:firstname,:lastname,:email,:password,:phone,:city,:state,:zip,:country,:is_buyer,:is_seller, :initial_email, :verification_code)";
                 $stmt1 = $db->prepare($sql1);
                 $stmt1->bindParam("firstname", $firstname, PDO::PARAM_STR);
                 $stmt1->bindParam("lastname", $lastname, PDO::PARAM_STR);
@@ -217,6 +288,7 @@ function signup()
                 $stmt1->bindParam("is_buyer", $is_buyer, PDO::PARAM_STR);
                 $stmt1->bindParam("is_seller", $is_seller, PDO::PARAM_STR);
                 $stmt1->bindParam("initial_email", $email, PDO::PARAM_STR);
+                $stmt1->bindParam("verification_code", $verification_code, PDO::PARAM_STR);
                 $stmt1->execute();
                 $userData = internalUserDetails($email);
 
@@ -416,20 +488,17 @@ function productAdd(){
 
     $user_id = $data->user_id;
     $token = $data->token;
-    
+
+    $thumbnail = $data->thumb;
     $image1 = $data->image1;
+    $image2 = $data->image2;
+    $image3 = $data->image3;
+    $image4 = $data->image4;
 
     if (!$user_id) {
         echo '{"error":{"text":"Please login first!"}}';
         exit();
     }
-
-    // print_r($data);
-    // exit();
-    // $image1 = uploadImage($data->image1);
-    // $image2 = uploadImage($data->image2);
-    // $image3 = uploadImage($data->image3);
-    // $image4 = uploadImage($data->image4);
 
     try {
 
@@ -463,7 +532,7 @@ function productAdd(){
         $stmt1->bindParam("category", $category, PDO::PARAM_STR);
         $stmt1->bindParam("category_id", $category_id, PDO::PARAM_INT);
         $stmt1->bindParam("image", $image1, PDO::PARAM_STR);
-        $stmt1->bindParam("thumbnail", $image1, PDO::PARAM_STR);
+        $stmt1->bindParam("thumbnail", $thumbnail, PDO::PARAM_STR);
         $stmt1->bindParam("description", $description, PDO::PARAM_STR);
         $stmt1->bindParam("stock", $stock, PDO::PARAM_INT);
         $stmt1->bindParam("seller", $user_id, PDO::PARAM_INT);
@@ -472,38 +541,64 @@ function productAdd(){
         $stmt1->bindParam("status", $status, PDO::PARAM_STR);
         
         if ($stmt1->execute()){
-            $db = null;
-            $data = json_encode($data);
-            echo '{"product": ' . $data . '}';
+            $lastInsertId = $db->lastInsertId();
+
+            $sql2 = "INSERT INTO multi_images (id, image1, image2, image3) VALUES 
+            (:id, :image1, :image2, :image3)";
+            $stmt2 = $db->prepare($sql2);
+            $stmt2->bindParam("id", $lastInsertId, PDO::PARAM_INT);
+            $stmt2->bindParam("image1", $image2, PDO::PARAM_STR);
+            $stmt2->bindParam("image2", $image3, PDO::PARAM_STR);
+            $stmt2->bindParam("image3", $image4, PDO::PARAM_STR);            
+
+            if ($stmt2->execute()){
+                $db = null;
+                $data = json_encode($data);
+                echo '{"product": ' . $data . '}';
+            }else{
+                $db = null;
+                echo '{"error":{"text":"Warning! Product add failed!"}}';
+            }
+
         }else{
             $db = null;
-            echo '{"error":{"text":"Bad request"}}';
+            echo '{"error":{"text":"Warning! Product add failed!"}}';
         }
 
     } catch (PDOException $e) {
-       echo '{"error":{"text":' . $e->getMessage() . '}}';
-   }
+     echo '{"error":{"text":' . $e->getMessage() . '}}';
+ }
+
 }
 
-function uploadImage($file){
-    $POST_DATA = array(
-        'image' => $file
-    );
 
-    $curl = curl_init();
-    curl_setopt($curl, CURLOPT_URL, 'https://api.imgbb.com/1/upload?key=145ffb74f542dd121e504d6e5d699236');
-    curl_setopt($curl, CURLOPT_TIMEOUT, 30);
-    curl_setopt($curl, CURLOPT_POST, 1);
-    curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
+function seller_info(){
+    $request = \Slim\Slim::getInstance()->request();
+    $data = json_decode($request->getBody());
+    
+    $seller = $data->seller;
+    try {
+        $db = getDB();
 
-    curl_setopt($curl, CURLOPT_POSTFIELDS, $POST_DATA);
-    $response = curl_exec($curl);
+        $userData = '';
 
-    curl_close ($curl);
+        $sql = "SELECT * FROM user where user_id = :seller";
+        $stmt = $db->prepare($sql);
+        $stmt->bindParam("seller", $seller, PDO::PARAM_STR);
+        $stmt->execute();
+        $userData = $stmt->fetch(PDO::FETCH_OBJ);
+        $db = null;
+        if ($userData){
+            $userData = json_encode($userData);
+            echo '{"seller": ' . $userData . '}';
+        } else {
+            echo '{"text":"Warning! No seller found!"}';
+        }
 
-    $response = json_decode($response,true);
-    $image = $response['data']['url'];
-    return $image;
+    } catch (PDOException $e) {
+     echo '{"error":{"text":' . $e->getMessage() . '}}';
+ }
+
 }
 
 ?>
